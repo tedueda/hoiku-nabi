@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="pageTitle">ブログ｜保育士求人ナビ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-pink-50 text-gray-800 min-h-screen flex flex-col">
+  <header class="bg-white shadow-sm">
+    <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="text-xl font-bold text-pink-600">保育士求人ナビ</a>
+      <nav class="text-sm flex gap-4">
+        <a href="/" class="hover:text-pink-600">ホーム</a>
+        <a href="/blog" class="text-pink-600 font-medium">ブログ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-3xl mx-auto px-4 py-10 w-full">
+    <a href="/blog" class="text-pink-600 text-sm hover:underline">← ブログ一覧に戻る</a>
+    <article id="article" class="mt-4">
+      <p id="loading" class="text-gray-500">読み込み中...</p>
+    </article>
+  </main>
+
+  <footer class="bg-white border-t mt-10">
+    <div class="max-w-3xl mx-auto px-4 py-6 text-sm text-gray-500 text-center">© 保育士求人ナビ</div>
+  </footer>
+
+  <script>
+    const esc = (s) => (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+
+    async function load() {
+      const article = document.getElementById('article');
+      if (!id) { article.innerHTML = '<p class="text-red-500">記事IDが指定されていません。</p>'; return; }
+      try {
+        const res = await fetch(`/.netlify/functions/get-post?id=${encodeURIComponent(id)}`);
+        const { post, error } = await res.json();
+        if (error) throw new Error(error);
+        render(post);
+      } catch (e) {
+        article.innerHTML = `<p class="text-red-500">記事を読み込めませんでした: ${esc(e.message)}</p>`;
+      }
+    }
+
+    function render(p) {
+      document.getElementById('pageTitle').textContent = `${p.title}｜保育士求人ナビ`;
+      const date = new Date(p.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+      const paragraphs = esc(p.content).split(/\n{2,}|\n/).filter(Boolean)
+        .map((t) => `<p class="mb-4 leading-relaxed">${t}</p>`).join('');
+      document.getElementById('article').innerHTML = `
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mt-3 mb-3">${esc(p.title)}</h1>
+        <div class="flex items-center gap-3 text-sm text-gray-500 mb-6">
+          <time>${date}</time><span>・</span><span>${esc(p.author)}</span>
+        </div>
+        ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.title)}" class="w-full rounded-2xl mb-8 object-cover" />` : ''}
+        <div class="text-gray-800 text-[15px]">${paragraphs}</div>
+      `;
+    }
+    load();
+  </script>
+</body>
+</html>

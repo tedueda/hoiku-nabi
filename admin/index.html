@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>ブログ管理｜保育士求人ナビ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-pink-50 text-gray-800 min-h-screen">
+  <!-- ログイン -->
+  <div id="login" class="min-h-screen flex items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
+      <h1 class="text-2xl font-bold text-pink-600 mb-6 text-center">ブログ管理ログイン</h1>
+      <input id="pw" type="password" placeholder="管理パスワード"
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-pink-400 focus:border-transparent" />
+      <button id="loginBtn" class="w-full bg-pink-600 text-white py-3 rounded-lg font-medium hover:bg-pink-700 transition">ログイン</button>
+      <p id="loginErr" class="text-red-500 text-sm mt-3 hidden"></p>
+    </div>
+  </div>
+
+  <!-- 管理画面 -->
+  <div id="app" class="hidden max-w-5xl mx-auto px-4 py-10">
+    <div class="flex justify-between items-center mb-8">
+      <h1 class="text-3xl font-bold text-pink-600">ブログ管理（AI生成機能付き）</h1>
+      <div class="flex gap-3">
+        <a href="/blog" target="_blank" class="text-pink-600 underline text-sm self-center">公開ブログを見る</a>
+        <button id="newBtn" class="bg-pink-600 text-white px-5 py-2.5 rounded-lg hover:bg-pink-700 transition">＋ 新規記事作成</button>
+      </div>
+    </div>
+
+    <!-- 編集フォーム -->
+    <div id="editor" class="hidden bg-white rounded-2xl shadow p-6 mb-8">
+      <h2 id="editorTitle" class="text-xl font-semibold mb-6">新規記事作成（AI生成）</h2>
+      <input type="hidden" id="postId" />
+
+      <label class="block text-sm font-medium mb-2">テーマ / タイトル <span class="text-red-500">*</span></label>
+      <div class="flex gap-2 mb-1">
+        <input id="title" type="text" placeholder="例: 企業主導型保育園で働くメリットとは"
+          class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" />
+        <button id="genBtn" class="flex items-center gap-2 bg-purple-600 text-white px-5 py-2 rounded-lg hover:bg-purple-700 transition disabled:bg-gray-400">
+          <span id="genLabel">AI生成</span>
+        </button>
+      </div>
+      <p class="text-xs text-gray-500 mb-4">テーマを入力して「AI生成」を押すと、ChatGPTが約1000文字の記事を自動生成します。</p>
+
+      <label class="block text-sm font-medium mb-2">トップ画像</label>
+      <div class="flex items-center gap-4 mb-1">
+        <label class="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200 transition">
+          画像を選択
+          <input id="imageInput" type="file" accept="image/*" class="hidden" />
+        </label>
+        <div id="previewWrap" class="hidden relative">
+          <img id="preview" class="h-20 w-32 object-cover rounded-lg" />
+          <button id="removeImg" type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 leading-none">×</button>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 mb-4">記事上部に大きく表示されます（5MB以下推奨）。</p>
+
+      <label class="block text-sm font-medium mb-2">本文 <span class="text-red-500">*</span> <span id="charCount" class="text-gray-400"></span></label>
+      <textarea id="content" rows="15" placeholder="AI生成、または手動で入力"
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 mb-4"></textarea>
+
+      <label class="block text-sm font-medium mb-2">著者</label>
+      <input id="author" type="text" value="保育士求人ナビ"
+        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 mb-4" />
+
+      <label class="inline-flex items-center gap-2 mb-6">
+        <input id="published" type="checkbox" checked class="w-4 h-4 text-pink-600 rounded" />
+        <span class="text-sm">公開する</span>
+      </label>
+
+      <div class="flex gap-3">
+        <button id="saveBtn" class="bg-pink-600 text-white px-6 py-2.5 rounded-lg hover:bg-pink-700 transition disabled:bg-gray-400">保存して公開</button>
+        <button id="cancelBtn" class="bg-gray-500 text-white px-6 py-2.5 rounded-lg hover:bg-gray-600 transition">キャンセル</button>
+      </div>
+      <p id="saveMsg" class="text-sm mt-3"></p>
+    </div>
+
+    <!-- 記事一覧 -->
+    <div id="list" class="space-y-4"></div>
+  </div>
+
+  <script>
+    const API = '/.netlify/functions';
+    let pw = sessionStorage.getItem('hoiku_admin_pw') || '';
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    async function api(path, { method = 'POST', body } = {}) {
+      const res = await fetch(`${API}/${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Password': pw },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `エラー(${res.status})`);
+      return data;
+    }
+
+    // ---- ログイン ----
+    async function doLogin() {
+      pw = $('pw').value;
+      try {
+        await api('admin-list-posts', { body: {} });
+        sessionStorage.setItem('hoiku_admin_pw', pw);
+        $('login').classList.add('hidden');
+        $('app').classList.remove('hidden');
+        loadPosts();
+      } catch (e) {
+        $('loginErr').textContent = e.message;
+        $('loginErr').classList.remove('hidden');
+      }
+    }
+    $('loginBtn').onclick = doLogin;
+    $('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+    // ---- 画像 ----
+    let imageDataUrl = '';
+    $('imageInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        imageDataUrl = reader.result;
+        $('preview').src = imageDataUrl;
+        $('previewWrap').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
+    $('removeImg').onclick = () => {
+      imageDataUrl = '';
+      $('imageInput').value = '';
+      $('preview').src = '';
+      $('previewWrap').classList.add('hidden');
+      $('editor').dataset.imageUrl = '';
+    };
+
+    $('content').addEventListener('input', () => {
+      $('charCount').textContent = `(${$('content').value.length}文字)`;
+    });
+
+    // ---- AI生成 ----
+    $('genBtn').onclick = async () => {
+      const title = $('title').value.trim();
+      if (!title) { alert('テーマ（タイトル）を入力してください'); return; }
+      $('genBtn').disabled = true;
+      $('genLabel').textContent = '生成中...';
+      try {
+        const { content } = await api('generate-blog', { body: { title } });
+        $('content').value = content;
+        $('charCount').textContent = `(${content.length}文字)`;
+      } catch (e) {
+        alert('記事の生成に失敗しました: ' + e.message);
+      } finally {
+        $('genBtn').disabled = false;
+        $('genLabel').textContent = 'AI生成';
+      }
+    };
+
+    // ---- フォーム制御 ----
+    function openEditor(post) {
+      $('editor').classList.remove('hidden');
+      $('editorTitle').textContent = post ? '記事を編集' : '新規記事作成（AI生成）';
+      $('postId').value = post?.id || '';
+      $('title').value = post?.title || '';
+      $('content').value = post?.content || '';
+      $('charCount').textContent = post?.content ? `(${post.content.length}文字)` : '';
+      $('author').value = post?.author || '保育士求人ナビ';
+      $('published').checked = post ? !!post.published : true;
+      imageDataUrl = '';
+      $('editor').dataset.imageUrl = post?.image_url || '';
+      $('imageInput').value = '';
+      if (post?.image_url) {
+        $('preview').src = post.image_url;
+        $('previewWrap').classList.remove('hidden');
+      } else {
+        $('previewWrap').classList.add('hidden');
+      }
+      $('saveMsg').textContent = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    $('newBtn').onclick = () => openEditor(null);
+    $('cancelBtn').onclick = () => $('editor').classList.add('hidden');
+
+    $('saveBtn').onclick = async () => {
+      const title = $('title').value.trim();
+      const content = $('content').value.trim();
+      if (!title || !content) { alert('タイトルと本文は必須です'); return; }
+      $('saveBtn').disabled = true;
+      $('saveMsg').textContent = '保存中...';
+      try {
+        const body = {
+          id: $('postId').value || undefined,
+          title, content,
+          author: $('author').value.trim() || '保育士求人ナビ',
+          published: $('published').checked,
+          image_url: $('editor').dataset.imageUrl || '',
+        };
+        if (imageDataUrl) body.image_data = imageDataUrl;
+        await api('save-post', { body });
+        $('saveMsg').textContent = '保存しました！';
+        $('editor').classList.add('hidden');
+        loadPosts();
+      } catch (e) {
+        $('saveMsg').textContent = '保存に失敗しました: ' + e.message;
+      } finally {
+        $('saveBtn').disabled = false;
+      }
+    };
+
+    // ---- 一覧 ----
+    async function loadPosts() {
+      try {
+        const { posts } = await api('admin-list-posts', { body: {} });
+        $('list').innerHTML = posts.length ? posts.map(renderRow).join('') : '<p class="text-center text-gray-500 py-10">まだ記事がありません</p>';
+        posts.forEach((p) => {
+          $(`edit-${p.id}`).onclick = () => openEditor(p);
+          $(`del-${p.id}`).onclick = () => removePost(p.id);
+        });
+      } catch (e) {
+        $('list').innerHTML = `<p class="text-red-500">${esc(e.message)}</p>`;
+      }
+    }
+
+    function renderRow(p) {
+      const date = new Date(p.created_at).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      return `<div class="bg-white rounded-xl shadow p-5 flex gap-4">
+        ${p.image_url ? `<img src="${esc(p.image_url)}" class="w-32 h-24 object-cover rounded-lg flex-shrink-0" />` : ''}
+        <div class="flex-1 min-w-0">
+          <h3 class="text-lg font-semibold mb-1 truncate">${esc(p.title)}</h3>
+          <p class="text-gray-600 text-sm mb-2 line-clamp-2">${esc(p.content).slice(0, 120)}…</p>
+          <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+            <span>著者: ${esc(p.author)}</span><span>${date}</span>
+            <span class="${p.published ? 'text-green-600' : 'text-red-600'}">${p.published ? '公開中' : '非公開'}</span>
+            <span class="text-blue-600">${p.content.length}文字</span>
+          </div>
+        </div>
+        <div class="flex flex-col gap-2 flex-shrink-0">
+          <button id="edit-${p.id}" class="px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-sm">編集</button>
+          <button id="del-${p.id}" class="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-sm">削除</button>
+        </div>
+      </div>`;
+    }
+
+    async function removePost(id) {
+      if (!confirm('本当に削除しますか？')) return;
+      try { await api('delete-post', { body: { id } }); loadPosts(); }
+      catch (e) { alert('削除に失敗しました: ' + e.message); }
+    }
+
+    // 自動ログイン（セッションに保存済みなら）
+    if (pw) doLogin();
+  </script>
+</body>
+</html>
