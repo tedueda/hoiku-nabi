@@ -251,7 +251,7 @@
     }
 
     // 自動ログイン（セッションに保存済みなら）
-    if (pw) doLogin();
+    if (pw) { $('pw').value = pw; doLogin(); }
   </script>
 </body>
 </html>
