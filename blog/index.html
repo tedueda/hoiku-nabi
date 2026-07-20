@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ブログ｜保育士求人ナビ</title>
+  <meta name="description" content="保育士の転職・求人・働き方に役立つ情報をお届けするブログ。保育士求人ナビ。" />
+  <link rel="canonical" href="https://hoikushi-kyujin.net/blog" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-pink-50 text-gray-800 min-h-screen flex flex-col">
+  <header class="bg-white shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/" class="text-xl font-bold text-pink-600">保育士求人ナビ</a>
+      <nav class="text-sm flex gap-4">
+        <a href="/" class="hover:text-pink-600">ホーム</a>
+        <a href="/jobs" class="hover:text-pink-600">求人を探す</a>
+        <a href="/blog" class="text-pink-600 font-medium">ブログ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-5xl mx-auto px-4 py-10 w-full">
+    <h1 class="text-3xl font-bold text-pink-600 mb-2">ブログ</h1>
+    <p class="text-gray-600 mb-8">保育士の転職・求人・働き方に役立つ情報をお届けします。</p>
+    <div id="grid" class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <p id="loading" class="text-gray-500 col-span-full">読み込み中...</p>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t mt-10">
+    <div class="max-w-5xl mx-auto px-4 py-6 text-sm text-gray-500 text-center">© 保育士求人ナビ</div>
+  </footer>
+
+  <script>
+    const esc = (s) => (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    async function load() {
+      try {
+        const res = await fetch('/.netlify/functions/list-public-posts');
+        const { posts, error } = await res.json();
+        if (error) throw new Error(error);
+        const grid = document.getElementById('grid');
+        if (!posts || posts.length === 0) {
+          grid.innerHTML = '<p class="text-gray-500 col-span-full">まだ記事がありません。</p>';
+          return;
+        }
+        grid.innerHTML = posts.map(card).join('');
+      } catch (e) {
+        document.getElementById('grid').innerHTML = `<p class="text-red-500 col-span-full">読み込みに失敗しました: ${esc(e.message)}</p>`;
+      }
+    }
+    function card(p) {
+      const date = new Date(p.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+      const excerpt = esc(p.content).replace(/\n/g, ' ').slice(0, 80);
+      const img = p.image_url
+        ? `<img src="${esc(p.image_url)}" alt="${esc(p.title)}" class="w-full h-44 object-cover" loading="lazy" />`
+        : `<div class="w-full h-44 bg-pink-100 flex items-center justify-center text-pink-300 text-4xl">📝</div>`;
+      return `<a href="/blog/post.html?id=${encodeURIComponent(p.id)}" class="bg-white rounded-2xl shadow hover:shadow-lg transition overflow-hidden flex flex-col">
+        ${img}
+        <div class="p-5 flex flex-col flex-1">
+          <time class="text-xs text-gray-400 mb-1">${date}</time>
+          <h2 class="font-semibold text-gray-800 mb-2 line-clamp-2">${esc(p.title)}</h2>
+          <p class="text-sm text-gray-600 line-clamp-3 flex-1">${excerpt}…</p>
+          <span class="text-pink-600 text-sm font-medium mt-3">続きを読む →</span>
+        </div>
+      </a>`;
+    }
+    load();
+  </script>
+</body>
+</html>
