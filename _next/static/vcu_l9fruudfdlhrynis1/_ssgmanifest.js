@@ -1,0 +1,1 @@
+self.__SSG_MANIFEST=new Set(["\u002Farea\u002F[slug]","\u002Farticles\u002F[slug]","\u002Fcondition\u002F[slug]","\u002Ffacility\u002F[slug]","\u002Fjobs\u002F[id]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()

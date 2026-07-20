@@ -1,0 +1,22 @@
+# robots.txt for Ocean View Ryukyu Tower 沖縄オーシャンビュー民泊
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://okinawa-yonabal.com/sitemap.xml
+
+# クロール頻度の最適化
+Crawl-delay: 1
+
+# 主要な検索エンジン向け設定
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
