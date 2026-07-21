@@ -53,7 +53,7 @@
       const date = new Date(p.created_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
       const excerpt = esc(p.content).replace(/\n/g, ' ').slice(0, 80);
       const img = p.image_url
-        ? `<img src="${esc(p.image_url)}" alt="${esc(p.title)}" class="w-full h-44 object-cover" loading="lazy" />`
+        ? `<img src="${esc(p.image_url)}" alt="${esc(p.title)}" class="w-full h-44 object-contain bg-pink-50" loading="lazy" />`
         : `<div class="w-full h-44 bg-pink-100 flex items-center justify-center text-pink-300 text-4xl">📝</div>`;
       return `<a href="/blog/post.html?id=${encodeURIComponent(p.id)}" class="bg-white rounded-2xl shadow hover:shadow-lg transition overflow-hidden flex flex-col">
         ${img}
